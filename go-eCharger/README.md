@@ -1,6 +1,8 @@
-# go-e Charger Binding
+# Go-eCharger Binding
 
-This Binding controls and reads data from the [go-e Charger](https://go-e.co/), which is a mobile wallbox for charging EVs and has an open REST API for reading data and configuration.
+This Binding controls and reads data from the [Go-eCharger](https://go-e.co/).
+It is a mobile wallbox for charging EVs and has an open REST API for reading data and configuration.
+The API must be activated in the Go-eCharger app.
 
 ## Supported Things
 
@@ -15,191 +17,113 @@ Please note that v1 is the default, but more functions (channels) are supported 
 
 ## Thing Configuration
 
-The thing has three configuration parameters:
+The thing has these configuration parameters:
 
-| Parameter       | Description                                   | Required |
-|-----------------|-----------------------------------------------|----------|
-| ip              | The IP-address of your go-e Charger           | yes      |
-| apiVersion      | The API version to use (1=default or 2)       | no       |
-| refreshInterval | Interval to read data, default 5 (in seconds) | no       |
+| Parameter       | Description                                                       | Required |
+|-----------------|-------------------------------------------------------------------|----------|
+| ip              | The IP-address of your Go-eCharger                                | yes*     |
+| serial          | The serial number of the Go-eCharger                              | yes*     |
+| token           | The access token for the Go-eCharger Cloud API                    | yes*     |
+| apiVersion      | The API version to use (1=default or 2)<br>(API v1 is deprecated) | no       |
+| refreshInterval | Interval to read data, default 5 (in seconds)                     | no       |
 
+The API v2 is only available for Go-eCharger with new hardware revision (CM-03).
+The API v1 is deprecated.
+*) Configure ip for the Local API or serial and token for Cloud API. If both are configured the local API will be used.
+
+## Groups
+
+The API v2 of go-e charger wallbox provides a vast set of
+[API keys](https://github.com/goecharger/go-eCharger-API-v2/blob/main/apikeys-de.md).
 The apiVersion 2 is only available for go-e Charger with new hardware revision (CM-03, GM-10 and potentially others), which can be recognized with the serial number on the back of the device.
+and state keys a grouping scheme is now applied.
+
+| Group               | Group ID         | Abstract          | Description                                        |
+|---------------------|------------------|-------------------|----------------------------------------------------|
+| control             | goeEnergyControl | Energy control    | Control options for charging with Go-eCharger      |
+| states              | goeStates        | State information | Various state information provided by the wall box |
+| aWATTarMarketPrices | goeMarketPrices  | Market prices     | Control and state information about market prices  |
+| meter               | goeMeter         | Measurement       | Measurement API keys                               |
+| other               | goeOther         | Miscellaneous     | Various other control and information keys         |
+| info                | goeInfo          | Static information| Static information about the wallbox               |
+
+*Note* The grouping is a breaking change of the binding to the previous versions.
+
 
 ## Channels
 
-Currently available channels are:
+Currently available channels are
 
-| Channel ID               | Item Type                | Description                                                   | API version      |
-|--------------------------|--------------------------|---------------------------------------------------------------|------------------|
-| maxCurrent               | Number:ElectricCurrent   | Maximum current allowed to use for charging                   | 1 (r/w), 2 (r/w) |
-| maxCurrentTemp           | Number:ElectricCurrent   | Maximum current temporary (not written to EEPROM)             | 1 (r)            |
-| pwmSignal                | String                   | Signal status for PWM signal                                  | 1 (r), 2 (r)     |
-| error                    | String                   | Error code of charger                                         | 1 (r), 2 (r)     |
-| voltageL1                | Number:ElectricPotential | Voltage on L1                                                 | 1 (r), 2 (r)     |
-| voltageL2                | Number:ElectricPotential | Voltage on L2                                                 | 1 (r), 2 (r)     |
-| voltageL3                | Number:ElectricPotential | Voltage on L3                                                 | 1 (r), 2 (r)     |
-| currentL1                | Number:ElectricCurrent   | Current on L1                                                 | 1 (r), 2 (r)     |
-| currentL2                | Number:ElectricCurrent   | Current on L2                                                 | 1 (r), 2 (r)     |
-| currentL3                | Number:ElectricCurrent   | Current on L3                                                 | 1 (r), 2 (r)     |
-| powerL1                  | Number:Power             | Power on L1                                                   | 1 (r), 2 (r)     |
-| powerL2                  | Number:Power             | Power on L2                                                   | 1 (r), 2 (r)     |
-| powerL3                  | Number:Power             | Power on L2                                                   | 1 (r), 2 (r)     |
-| powerAll                 | Number:Power             | Power over all three phases                                   | 1 (r), 2 (r)     |
-| phases                   | Number                   | Amount of phases currently used for charging                  | 1 (r), 2 (r/w)   |
-| sessionChargeEnergyLimit | Number:Energy            | Wallbox stops charging after defined value, disable with 0    | 1 (r/w), 2 (r/w) |
-| sessionChargedEnergy     | Number:Energy            | Amount of energy that has been charged in this session        | 1 (r), 2 (r)     |
-| totalChargedEnergy       | Number:Energy            | Amount of energy that has been charged since installation     | 1 (r), 2 (r)     |
-| transaction              | Number                   | 0 if no card, otherwise card ID                               | 2 (r/w)          |
-| allowCharging            | Switch                   | If `ON` charging is allowed                                   | 1 (r/w), 2 (r)   |
-| cableCurrent             | Number:ElectricCurrent   | Specifies the max current that can be charged with that cable | 1 (r), 2 (r)     |
-| temperature              | Number:Temperature       | Temperature of the curciuit board of the go-e Charger         | 1 (r), 2 (r)     |
-| temperatureType2Port     | Number:Temperature       | Temperature of the type 2 port of the go-e Charger            | 2 (r)            |
-| firmware                 | String                   | Firmware Version                                              | 1 (r), 2 (r)     |
-| accessConfiguration      | String                   | Access configuration, for example OPEN, RFID ...              | 1 (r/w)          |
-| forceState               | Number                   | Force state  (Neutral=0, Off=1, On=2)                         | 2 (r/w)          |
-| awattarMaxPrice          | Number                   | Awattar Max Price in ct                                       | 2 (r/w)          |
+### Group '__control__'
 
-## Full Example
+All members of the group `control` are read write.
 
-demo.things
+| Channel ID                       | Item Type                | Description                                                   | API key | v1| v2|
+|----------------------------------|--------------------------|---------------------------------------------------------------|---------|---|---|
+| control#chargingMode             | String                   | Charging mode can be immediate, market price or energy budget | lmo     |   | X |
+| control#forceState               | Number                   | Force state  (Neutral=0, Off=1, On=2)                         | frc     |   | X |
+| control#maxCurrent               | Number:ElectricCurrent   | Maximum current allowed to use for charging                   | amp     | X | X |
+| control#maxCurrentTemp           | Number:ElectricCurrent   | Maximum current temporary (not written to EEPROM)             | amx     | X |   |
+| control#maxCurrentTemp           | Number:ElectricCurrent   | Maximum current temporary                                     | tcl     |   | X |
+| control#minChargingCurrent       | Number:ElectricCurrent   | Minimum Charging Current                                      | mca     |   | X |
+| control#maxChargingCurrent       | Number:ElectricCurrent   | Absolute Maximum Current                                      | ama     |   | X |
+| control#phaseSwitchMode          | Number                   | Phase Switch Mode (psm: Auto=0, Force_1=1, Force_3=2)         | psm     |   | X |
+| control#sessionChargeEnergyLimit | Number:Energy            | Wallbox stops charging after defined value, disable with 0    | dwo     | X | X |
 
-```java
-Thing goecharger:goe:garage [ip="192.168.1.36",refreshInterval=5]
-```
+*Note* The mode market price can be combined with an energy limit.
 
-demo.items
+### Group '__meter__'
 
-```java
-Number:ElectricCurrent     GoEChargerMaxCurrent                 "Maximum current"                       {channel="goecharger:goe:garage:maxCurrent"}
-Number:ElectricCurrent     GoEChargerMaxCurrentTemp             "Maximum current temporary"             {channel="goecharger:goe:garage:maxCurrentTemp"}
-Number                     GoEChargerForceState                 "Force state"                           {channel="goecharger:goe:garage:forceState"}
-Number                     GoEChargerPhases                     "Phases"                                {channel="goecharger:goe:garage:phases"}
-String                     GoEChargerPwmSignal                  "Pwm signal status"                     {channel="goecharger:goe:garage:pwmSignal"}
-String                     GoEChargerError                      "Error code"                            {channel="goecharger:goe:garage:error"}
-Number:ElectricPotential   GoEChargerVoltageL1                  "Voltage l1"                            {channel="goecharger:goe:garage:voltageL1"}
-Number:ElectricPotential   GoEChargerVoltageL2                  "Voltage l2"                            {channel="goecharger:goe:garage:voltageL2"}
-Number:ElectricPotential   GoEChargerVoltageL3                  "Voltage l3"                            {channel="goecharger:goe:garage:voltageL3"}
-Number:ElectricCurrent     GoEChargerCurrentL1                  "Current l1"                            {channel="goecharger:goe:garage:currentL1"}
-Number:ElectricCurrent     GoEChargerCurrentL2                  "Current l2"                            {channel="goecharger:goe:garage:currentL2"}
-Number:ElectricCurrent     GoEChargerCurrentL3                  "Current l3"                            {channel="goecharger:goe:garage:currentL3"}
-Number:Power               GoEChargerPowerL1                    "Power l1"                              {channel="goecharger:goe:garage:powerL1"}
-Number:Power               GoEChargerPowerL2                    "Power l2"                              {channel="goecharger:goe:garage:powerL2"}
-Number:Power               GoEChargerPowerL3                    "Power l3"                              {channel="goecharger:goe:garage:powerL3"}
-Number:Power               GoEChargerPowerAll                   "Power over All"                        {channel="goecharger:goe:garage:powerAll"}
-Number:Energy              GoEChargerSessionChargeEnergyLimit   "Current session charge energy limit"   {channel="goecharger:goe:garage:sessionChargeEnergyLimit"}
-Number:Energy              GoEChargerSessionChargedEnergy       "Current session charged energy"        {channel="goecharger:goe:garage:sessionChargedEnergy"}
-Number:Energy              GoEChargerTotalChargedEnergy         "Total charged energy"                  {channel="goecharger:goe:garage:totalChargedEnergy"}
-Switch                     GoEChargerAllowCharging              "Allow charging"                        {channel="goecharger:goe:garage:allowCharging"}
-Number:ElectricCurrent     GoEChargerCableCurrent               "Cable encoding"                        {channel="goecharger:goe:garage:cableCurrent"}
-Number:Temperature         GoEChargerTemperatureType2Port       "Temperature type 2 port"               {channel="goecharger:goe:garage:temperatureType2Port"}
-Number:Temperature         GoEChargerTemperatureCircuitBoard    "Temperature circuit board"             {channel="goecharger:goe:garage:temperature"}
-String                     GoEChargerFirmware                   "Firmware"                              {channel="goecharger:goe:garage:firmware"}
-String                     GoEChargerAccessConfiguration        "Access configuration"                  {channel="goecharger:goe:garage:accessConfiguration"}
-```
+All members of the group `meter` are read only.
 
-## Setting charge current of go-e Charger based on photovoltaik output
+| Channel ID                       | Item Type                | Description                                                   | API key | v1| v2|
+|----------------------------------|--------------------------|---------------------------------------------------------------|---------|---|---|
+| meter#voltageL1                  | Number:ElectricPotential | Voltage on L1                                                 | nrg[0]  | X | X |
+| meter#voltageL2                  | Number:ElectricPotential | Voltage on L2                                                 | nrg[1]  | X | X |
+| meter#voltageL3                  | Number:ElectricPotential | Voltage on L3                                                 | nrg[2]  | X | X |
+| meter#currentL1                  | Number:ElectricCurrent   | Current on L1                                                 | nrg[4]  | X | X |
+| meter#currentL2                  | Number:ElectricCurrent   | Current on L2                                                 | nrg[5]  | X | X |
+| meter#currentL3                  | Number:ElectricCurrent   | Current on L3                                                 | nrg[6]  | X | X |
+| meter#powerL1                    | Number:Power             | Power on L1                                                   | nrg[7]  | X | X |
+| meter#powerL2                    | Number:Power             | Power on L2                                                   | nrg[8]  | X | X |
+| meter#powerL3                    | Number:Power             | Power on L2                                                   | nrg[9]  | X | X |
+| meter#sessionChargedEnergy       | Number:Energy            | Amount of energy that has been charged in this session        | wh      | X | X |
+| meter#totalChargedEnergy         | Number:Energy            | Amount of energy that has been charged since installation     | eto     | X | X |
+| meter#temperature                | Number:Temperature       | Temperature of the circuit board of the Go-eCharger           | tma[1]  |   | X |
+| meter#temperatureType2Port       | Number:Temperature       | Temperature of the type 2 port of the Go-eCharger             | tma[0]  |   | X |
 
-You can easily define rules to charge with PV power alone.
-Here is a simple sample how such a rule could look like:
+### Group '__states__'
 
-```java
-rule "Set max amps for PV charging"
-when
-    Item availablePVCurrent received update
-then
-    logInfo("Amps available: ", receivedCommand.state)
-    GoEChargerMaxCurrentTemp.sendCommand(receivedCommand.state)
-end
-```
+All members of the group `states` are read only.
 
-Advanced example:
+| Channel ID                       | Item Type                | Description                                                   | API key | v1| v2|
+|----------------------------------|--------------------------|---------------------------------------------------------------|---------|---|---|
+| states#allowCharging             | Switch                   | If `ON` charging is allowed                                   | alw     | X | X |
+| states#cableCurrent              | Number:ElectricCurrent   | Specifies the max current that can be charged with that cable | cbl     | X | X |
+| states#adapterCurrentLimit       | Number:ElectricCurrent   | Is the 16A adapter used? Limits the current to 16A            | adi     | X | X |
+| states#error                     | String                   | Error code of charger                                         | err     | X | X |
+| states#chargingState             | String                   | Current charging state description                        | modelStatus |   | X |
+| states#numberOfPhases            | Number                   | Always zero                                                   | pnp     |   | X |
+| states#phasesAvailable           | Number                   | Number of connected phases                              | pha[3..5]     |   | X |
+| states#phasesActive              | Number                   | Number of currently active phases                       | pha[0..2]     |   | X |
+| states#pwmSignal                 | String                   | Signal status for PWM signal                                  | car     | X | X |
 
-```java
-rule "Set charging limit for go-e Charger"
-when
-    Time cron "*/10 * * ? * *" // Trigger every 10 seconds
-then
-    var actualMaxChargingCurrentInt = (GoEChargerMaxCurrent.state as Number).intValue
+### Group '__other__'
 
-    if (GoEChargerExcessCharge.state == ON) {
-        var currentChargingPower = GoEChargerPowerAll.state as Number
-        var totalPowerOutputInWatt = (Total_power_fast.state as DecimalType) * 1000
-        var availableChargingPowerInWatt = 0
+All members of the group `other` are marked for their access.
 
-        if (totalPowerOutputInWatt > 0 && currentChargingPower > 0) {
-            // take care if already charging
-            availableChargingPowerInWatt = currentChargingPower.intValue - totalPowerOutputInWatt.intValue
-        } else {
-            if (totalPowerOutputInWatt > 0) {
-                totalPowerOutputInWatt = 0
-            }
-            availableChargingPowerInWatt = (totalPowerOutputInWatt.intValue * -1) + currentChargingPower.intValue
-        }
+| Channel ID                       | Item Type             |Acc| Description                                                  | API key | v1| v2|
+|----------------------------------|-----------------------|---|--------------------------------------------------------------|---------|---|---|
+| other#powerAll                   | Number:Power          |R  | Power over all three phases                                  | nrg[11] | X | X |
+| other#transaction                | Number                |RW | 0 if no card, otherwise card ID                              | trx     |   | X |
+| other#accessConfiguration        | String                |RW | Access configuration, for example OPEN, RFID ...             | ast     | X |   |
 
-        var maxAmp3Phases = (availableChargingPowerInWatt / 3) / 230
-        if (maxAmp3Phases > 16.0) {
-            maxAmp3Phases = 16.0
-        }
+### Group '__info__'
 
-        var maxAmp1Phase = availableChargingPowerInWatt / 230
+All members of the group `info` are read only.
 
-        if (maxAmp3Phases >= 6) {
-            // set force state to neutral (Neutral=0, Off=1, On=2)
-            if (GoEChargerForceState.state != 0) {
-                GoEChargerForceState.sendCommand(0)
-            }
+| Channel ID                      | Item Type                | Description                                                    | API key | v1| v2|
+|---------------------------------|--------------------------|----------------------------------------------------------------|---------|---|---|
+| info#firmware                   | String                   | Firmware Version                                               | lmo     | X | X |
+| info#goeVariant                 | Number:Power |           | Either 11 or 22 (kW)                                           | var     |   | X |
 
-            // 3 phases
-            if (GoEChargerPhases.state != 3) {
-                GoEChargerPhases.sendCommand(3)
-            }
-
-            if (actualMaxChargingCurrentInt != maxAmp3Phases.intValue) {
-                GoEChargerMaxCurrent.sendCommand(maxAmp3Phases.intValue)
-                // logInfo("eCharger", "Set charging limit 3 Phases: " + maxAmp3Phases.intValue + " A")
-            }
-        } else {
-            if (maxAmp1Phase.intValue >= 6 ) {
-                // set force state to neutral (Neutral=0, Off=1, On=2)
-                if (GoEChargerForceState.state != 0) {
-                    GoEChargerForceState.sendCommand(0)
-                }
-
-                // switch to 1 phase -> check if this is useful
-                if (GoEChargerPhases.state != 1) {
-                    GoEChargerPhases.sendCommand(1)
-                }
-
-                if (actualMaxChargingCurrentInt != maxAmp1Phase.intValue) {
-                    GoEChargerMaxCurrent.sendCommand(maxAmp1Phase.intValue)
-                    // logInfo("eCharger", "Set charging limit 1 Phase: " + maxAmp1Phase.intValue + " A")
-                }
-            } else {
-                // switch off
-                if (GoEChargerForceState.state != 1) {
-                    GoEChargerMaxCurrent.sendCommand(6)
-                    GoEChargerForceState.sendCommand(1)
-                    // logInfo("eCharger", "Switch charging off")
-                }
-            }
-        }
-    } else {
-        // set force state to neutral (Neutral=0, Off=1, On=2)
-        if (GoEChargerForceState.state != 0) {
-            GoEChargerForceState.sendCommand(0)
-        }
-
-        if (GoEChargerPhases.state != 3) {
-            GoEChargerPhases.sendCommand(3)
-        }
-
-        if (actualMaxChargingCurrentInt != 16) {
-            GoEChargerMaxCurrent.sendCommand(16)
-        }
-    }
-end
-```
-
-You can also define more advanced rules if you have multiple cars that charge with a different amount of phases.
-For example if your car charges on one phase only, you can set maxAmps to output of PV power, if your car charges on two phases you can set maxAmps to `pv output / 2`, and for 3 phases `pv output / 3`.
-In general the calculation would be ´maxAmps = pvOutput / phases`.
